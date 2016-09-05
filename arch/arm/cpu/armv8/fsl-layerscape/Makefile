@@ -7,6 +7,7 @@
 obj-y += cpu.o
 obj-y += lowlevel.o
 obj-y += soc.o
+obj-y += ccn504.o
 obj-$(CONFIG_MP) += mp.o
 obj-$(CONFIG_OF_LIBFDT) += fdt.o
 obj-$(CONFIG_SPL) += spl.o
