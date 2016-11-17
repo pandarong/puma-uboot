@@ -1138,12 +1138,40 @@ static int _xhci_submit_int_msg(struct usb_device *udev, unsigned long pipe,
 static int _xhci_submit_bulk_msg(struct usb_device *udev, unsigned long pipe,
 				 void *buffer, int length)
 {
+	int ret;
+	int xfer_max_per_td, xfer_length, buf_pos;
+
 	if (usb_pipetype(pipe) != PIPE_BULK) {
 		printf("non-bulk pipe (type=%lu)", usb_pipetype(pipe));
 		return -EINVAL;
 	}
 
-	return xhci_bulk_tx(udev, pipe, length, buffer);
+	/*
+	 * When transfering data exceeding the maximum number of TRBs per
+	 * TD (default 64) is requested, the transfer fails with babble
+	 * error or time out.
+	 *
+	 * Thus, huge data transfer should be splitted into multiple TDs.
+	 */
+	xfer_max_per_td = TRB_MAX_BUFF_SIZE * (TRBS_PER_SEGMENT - 1);
+
+	buf_pos = 0;
+	do {
+		if (length > xfer_max_per_td)
+			xfer_length = xfer_max_per_td;
+		else
+			xfer_length = length;
+
+		ret = xhci_bulk_tx(udev, pipe, xfer_length, buffer + buf_pos);
+		if (ret < 0)
+			return ret;
+
+		buf_pos += xfer_length;
+		length -= xfer_length;
+
+	} while (length > 0);
+
+	return ret;
 }
 
 /**
