@@ -504,7 +504,6 @@ void i2c_init_board(void)
 void sunxi_board_init(void)
 {
 	int power_failed = 0;
-	unsigned long ramsize;
 
 #ifdef CONFIG_SY8106A_POWER
 	power_failed = sy8106a_set_vout1(CONFIG_SY8106A_VOUT1_VOLT);
@@ -565,9 +564,9 @@ void sunxi_board_init(void)
 #endif
 #endif
 	printf("DRAM:");
-	ramsize = sunxi_dram_init();
-	printf(" %d MiB\n", (int)(ramsize >> 20));
-	if (!ramsize)
+	gd->ram_size = sunxi_dram_init();
+	printf(" %d MiB\n", (int)(gd->ram_size >> 20));
+	if (!gd->ram_size)
 		hang();
 
 	/*
