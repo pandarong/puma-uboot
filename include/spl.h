@@ -240,6 +240,16 @@ int spl_early_init(void);
  * If this is not called, then driver model will be inactive in SPL's
  * board_init_f(), and no device tree will be available.
  */
+int spl_early_init(void);
+
+/**
+ * spl_init() - Set up device tree and driver model in SPL if enabled
+ *
+ * This function will be called from board_init_r() if not called earlier.
+ *
+ * If this is not called, then driver model will be inactive in SPL's
+ * board_init_f(), and no device tree will be available.
+ */
 int spl_init(void);
 
 #ifdef CONFIG_SPL_BOARD_INIT

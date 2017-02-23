@@ -185,7 +185,7 @@ static int spl_common_init(bool setup_malloc)
 {
 	int ret;
 
-	debug("spl_early_init()\n");
+	debug("spl_common_init()\n");
 
 #if defined(CONFIG_SYS_MALLOC_F_LEN)
 	if (setup_malloc) {
@@ -222,6 +222,7 @@ int spl_early_init(void)
 	ret = spl_common_init(true);
 	if (ret)
 		return ret;
+
 	gd->flags |= GD_FLG_SPL_EARLY_INIT;
 
 	return 0;
