@@ -5,6 +5,7 @@
  *
  * Adapted from coreboot.
  */
+
 #include <common.h>
 #include <clk.h>
 #include <dm.h>
@@ -19,6 +20,7 @@
 #include <asm/arch/grf_rk3399.h>
 #include <asm/arch/hardware.h>
 #include <linux/err.h>
+#include <time.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 struct chan_info {
@@ -506,6 +508,7 @@ static int pctl_cfg(const struct chan_info *chan, u32 channel,
 	u32 tmp, tmp1, tmp2;
 	u32 pwrup_srefresh_exit;
 	int ret;
+	const ulong timeout_ms = 200;
 
 	/*
 	 * work around controller bug:
@@ -581,20 +584,24 @@ static int pctl_cfg(const struct chan_info *chan, u32 channel,
 	clrsetbits_le32(&denali_phy[467], 0xff << 16, (tmp + 0x10) << 16);
 
 	ret = phy_io_config(chan, sdram_params);
-	if (ret)
+	if (ret) {
+		debug("DRAM:phy_io_config failed\n");
 		return ret;
+	}
 
 	/* PHY_DLL_RST_EN */
 	clrsetbits_le32(&denali_phy[957], 0x3 << 24, 0x2 << 24);
 
 	/* Wating for PHY and DRAM init complete */
-	tmp = 0;
-	while (!(readl(&denali_ctl[203]) & (1 << 3))) {
-		mdelay(10);
-		tmp++;
-		if (tmp > 10)
+	tmp = get_timer(0);
+	do {
+		if (get_timer(tmp) > timeout_ms) {
+			error("DRAM (%s): phy failed to lock within  %ld ms\n",
+			      __func__, timeout_ms);
 			return -ETIME;
-	}
+		}
+	} while (!(readl(&denali_ctl[203]) & (1 << 3)));
+	debug("DRAM: phy locked after %ld ms\n", get_timer(tmp));
 
 	clrsetbits_le32(&denali_ctl[68], PWRUP_SREFRESH_EXIT,
 			pwrup_srefresh_exit);
@@ -966,6 +973,9 @@ static void set_ddrconfig(const struct chan_info *chan,
 	writel(ddrconfig | (ddrconfig << 8), &ddr_msch_regs->ddrconf);
 	writel(((cs0_cap / 32) & 0xff) | (((cs1_cap / 32) & 0xff) << 8),
 	       &ddr_msch_regs->ddrsize);
+
+	debug("ch %d ddrconfig = 0x%x, ddrsize = 0x%x\n", channel,
+	      readl(&ddr_msch_regs->ddrconf), readl(&ddr_msch_regs->ddrsize));
 }
 
 static void dram_all_config(struct dram_info *dram,
@@ -1017,6 +1027,9 @@ static void dram_all_config(struct dram_info *dram,
 				     1 << 17);
 	}
 
+	debug("dram->pmugrf->os_reg2: 0x%08x, stride %d\n",
+	      sys_reg,
+	      sdram_params->base.stride);
 	writel(sys_reg, &dram->pmugrf->os_reg2);
 	rk_clrsetreg(&dram->pmusgrf->soc_con4, 0x1f << 10,
 		     sdram_params->base.stride << 10);
@@ -1120,6 +1133,11 @@ static int sdram_init(struct dram_info *dram,
 	switch_to_phy_index1(dram, sdram_params);
 
 	debug("Finish SDRAM initialization...\n");
+
+	/* simple memtest */
+	*(volatile uint64_t*)0x0 = 0x123456789abcdef0ULL;
+	debug("MEMTEST: %x %x\n", readl(0), readl(4));
+
 	return 0;
 }
 
