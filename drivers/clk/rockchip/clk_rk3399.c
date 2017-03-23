@@ -780,6 +780,10 @@ static ulong rk3399_clk_get_rate(struct clk *clk)
 	case SCLK_I2C7:
 		rate = rk3399_i2c_get_clk(priv->cru, clk->id);
 		break;
+	case SCLK_UART0:
+	case SCLK_UART2:
+		return 24000000;
+		break;
 	case DCLK_VOP0:
 	case DCLK_VOP1:
 		break;
