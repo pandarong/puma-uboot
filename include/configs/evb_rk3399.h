@@ -7,16 +7,17 @@
 #ifndef __EVB_RK3399_H
 #define __EVB_RK3399_H
 
+/*
+ * SPL @ 32kB for ~130kB
+ * ENV @ 240KB for 8kB
+ * FIT payload (ATF, U-Boot, FDT) @ 256kB
+ */
+#define CONFIG_ENV_OFFSET (240 * 1024)
+
 #include <configs/rk3399_common.h>
 
 #define CONFIG_ENV_IS_IN_MMC
 #define CONFIG_SYS_MMC_ENV_DEV 1
-/*
- * SPL @ 32k for ~36k
- * ENV @ 96k
- * u-boot @ 128K
- */
-#define CONFIG_ENV_OFFSET (96 * 1024)
 
 #define SDRAM_BANK_SIZE			(2UL << 30)
 
