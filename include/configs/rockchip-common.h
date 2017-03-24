@@ -40,6 +40,7 @@
 
 #endif
 
+#if !defined(CONFIG_ENV_OFFSET)
 #ifdef CONFIG_ROCKCHIP_SPL_BACK_TO_BROM
 /* SPL @ 32k for 34k
  * u-boot directly after @ 68k for 400k or so
@@ -52,6 +53,7 @@
  * u-boot @ 128K
  */
 #define CONFIG_ENV_OFFSET (96 * 1024)
+#endif
 #endif
 
 #endif /* _ROCKCHIP_COMMON_H_ */
