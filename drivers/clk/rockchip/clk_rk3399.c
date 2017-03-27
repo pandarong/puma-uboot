@@ -698,6 +698,96 @@ static ulong rk3399_spi_set_clk(struct rk3399_cru *cru, ulong clk_id, uint hz)
 	return rk3399_spi_get_clk(cru, clk_id);
 }
 
+/*
+ * RK3399 SPI clocks have a common divider-width (7 bits) and a single bit
+ * to select either CPLL or GPLL as the clock-parent. The location within
+ * the enclosing CLKSEL_CON (i.e. div_shift and sel_shift) are variable.
+ */
+
+struct spi_clkreg {
+	uint8_t reg;  /* CLKSEL_CON[reg] register in CRU */
+	uint8_t div_shift;
+	uint8_t sel_shift;
+};
+
+/*
+ * The entries are numbered relative to their offset from SCLK_SPI0.
+ *
+ * Note that SCLK_SPI3 (which is configured via PMUCRU and requires different
+ * logic is not supported).
+ */
+static const struct spi_clkreg spi_clkregs[] = {
+	[0] = { .reg = 59,
+		.div_shift = CLK_SPI0_PLL_DIV_CON_SHIFT,
+		.sel_shift = CLK_SPI0_PLL_SEL_SHIFT, },
+	[1] = { .reg = 59,
+		.div_shift = CLK_SPI1_PLL_DIV_CON_SHIFT,
+		.sel_shift = CLK_SPI1_PLL_SEL_SHIFT, },
+	[2] = { .reg = 60,
+		.div_shift = CLK_SPI2_PLL_DIV_CON_SHIFT,
+		.sel_shift = CLK_SPI2_PLL_SEL_SHIFT, },
+	[3] = { .reg = 60,
+		.div_shift = CLK_SPI4_PLL_DIV_CON_SHIFT,
+		.sel_shift = CLK_SPI4_PLL_SEL_SHIFT, },
+	[4] = { .reg = 58,
+		.div_shift = CLK_SPI5_PLL_DIV_CON_SHIFT,
+		.sel_shift = CLK_SPI5_PLL_SEL_SHIFT, },
+};
+
+static inline u32 extract_bits(u32 val, unsigned width, unsigned shift)
+{
+	return (val >> shift) & ((1 << width) - 1);
+}
+
+static ulong rk3399_spi_get_clk(struct rk3399_cru *cru, ulong clk_id)
+{
+	const struct spi_clkreg *spiclk = NULL;
+	u32 div, val;
+
+	switch (clk_id) {
+	case SCLK_SPI0 ... SCLK_SPI5:
+		spiclk = &spi_clkregs[clk_id - SCLK_SPI0];
+		break;
+
+	default:
+		error("%s: SPI clk-id %ld not supported\n", __func__, clk_id);
+		return -EINVAL;
+	}
+
+	val = readl(&cru->clksel_con[spiclk->reg]);
+	div = extract_bits(val, CLK_SPI_PLL_DIV_CON_WIDTH, spiclk->div_shift);
+
+	return DIV_TO_RATE(GPLL_HZ, div);
+}
+
+static ulong rk3399_spi_set_clk(struct rk3399_cru *cru, ulong clk_id, uint hz)
+{
+	const struct spi_clkreg *spiclk = NULL;
+	int src_clk_div;
+
+	src_clk_div = RATE_TO_DIV(GPLL_HZ, hz);
+	assert(src_clk_div < 127);
+
+	switch (clk_id) {
+	case SCLK_SPI1 ... SCLK_SPI5:
+		spiclk = &spi_clkregs[clk_id - SCLK_SPI0];
+		break;
+
+	default:
+		error("%s: SPI clk-id %ld not supported\n", __func__, clk_id);
+		return -EINVAL;
+	}
+
+	rk_clrsetreg(&cru->clksel_con[spiclk->reg],
+		     ((CLK_SPI_PLL_DIV_CON_MASK << spiclk->div_shift) |
+		       (CLK_SPI_PLL_SEL_GPLL << spiclk->sel_shift)),
+		     ((src_clk_div << spiclk->div_shift) |
+		      (CLK_SPI_PLL_SEL_GPLL << spiclk->sel_shift)));
+
+
+	return DIV_TO_RATE(GPLL_HZ, src_clk_div);
+}
+
 static ulong rk3399_vop_set_clk(struct rk3399_cru *cru, ulong clk_id, u32 hz)
 {
 	struct pll_div vpll_config = {0};
