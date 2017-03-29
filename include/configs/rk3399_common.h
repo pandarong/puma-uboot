@@ -22,6 +22,10 @@
 #define CONFIG_SPL_SPI_LOAD
 #endif
 
+#if defined(CONFIG_CMD_USB_MASS_STORAGE)
+#define CONFIG_USB_FUNCTION_MASS_STORAGE
+#endif
+
 #define COUNTER_FREQUENCY               24000000
 
 #define CONFIG_SYS_NS16550_MEM32
