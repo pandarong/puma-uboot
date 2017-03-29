@@ -9,6 +9,8 @@
 #include <dm/uclass-internal.h>
 #include <asm/arch/periph.h>
 #include <power/regulator.h>
+#include <usb.h>
+#include <dwc3-uboot.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
