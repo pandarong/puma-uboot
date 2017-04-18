@@ -377,7 +377,6 @@ int rkcommon_vrec_header(struct image_tool_params *params,
 	/* Allocate, clear and install the header */
 	tparams->hdr = malloc(tparams->header_size);
 	memset(tparams->hdr, 0, tparams->header_size);
-	tparams->header_size = tparams->header_size;
 
 	/*
 	 * If someone passed in 0 for the alignment, we'd better handle
