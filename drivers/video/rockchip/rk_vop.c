@@ -242,11 +242,13 @@ int rk_display_init(struct udevice *dev, ulong fbbase,
 	}
 
 	ret = clk_get_by_index(dev, 1, &clk);
-	if (!ret)
+	if (!ret) {
 		ret = clk_set_rate(&clk, timing.pixelclock.typ);
-	if (ret) {
-		debug("%s: Failed to set pixel clock: ret=%d\n", __func__, ret);
-		return ret;
+		if (!ret) {
+			debug("%s: Failed to set pixel clock: ret=%d\n",
+			      __func__, ret);
+			return ret;
+		}
 	}
 
 	rkvop_mode_set(regs, &timing, vop_id);
