@@ -22,6 +22,10 @@
 
 #define SDRAM_BANK_SIZE			(2UL << 30)
 
+#define CONFIG_MISC_INIT_R
+#define CONFIG_SERIAL_TAG
+#define CONFIG_ENV_OVERWRITE
+
 #define CONFIG_SYS_WHITE_ON_BLACK
 
 #endif
