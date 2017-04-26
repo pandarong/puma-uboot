@@ -13,6 +13,7 @@
 #include <ram.h>
 #include <usb.h>
 #include <dwc3-uboot.h>
+#include <u-boot/sha256.h>
 
 #define RK3399_CPUID_OFF  0x7
 #define RK3399_CPUID_LEN  0x10
@@ -60,6 +61,42 @@ int board_init(void)
 
 out:
 	return 0;
+}
+
+static void setup_macaddr(void)
+{
+#if CONFIG_IS_ENABLED(CMD_NET)
+	int ret;
+	const char *cpuid = getenv("cpuid#");
+	u8 hash[SHA256_SUM_LEN];
+	int size = sizeof(hash);
+	u8 mac_addr[6];
+
+	/* Only generate a MAC address, if none is set in the environment */
+	if (getenv("ethaddr"))
+		return;
+
+	if (!cpuid) {
+		debug("%s: could not retrieve 'cpuid#'\n", __func__);
+		return;
+	}
+
+	ret = hash_block("sha256", (void *)cpuid, strlen(cpuid), hash, &size);
+	if (ret) {
+		debug("%s: failed to calculate SHA256\n", __func__);
+		return;
+	}
+
+	/* Copy 6 bytes of the hash to base the MAC address on */
+	memcpy(mac_addr, hash, 6);
+
+	/* Make this a valid MAC address and set it */
+	mac_addr[0] &= 0xfe;  /* clear multicast bit */
+	mac_addr[0] |= 0x02;  /* set local assignment bit (IEEE802) */
+	eth_setenv_enetaddr("ethaddr", mac_addr);
+#endif
+
+	return;
 }
 
 static void setup_serial(void)
@@ -117,6 +154,7 @@ static void setup_serial(void)
 int misc_init_r(void)
 {
 	setup_serial();
+	setup_macaddr();
 
 	return 0;
 }
