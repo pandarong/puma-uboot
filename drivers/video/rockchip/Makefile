@@ -9,5 +9,5 @@ ifdef CONFIG_VIDEO_ROCKCHIP
 obj-y += rk_vop.o
 obj-$(CONFIG_DISPLAY_ROCKCHIP_EDP) += rk_edp.o
 obj-$(CONFIG_DISPLAY_ROCKCHIP_LVDS) += rk_lvds.o
-obj-$(CONFIG_DISPLAY_ROCKCHIP_HDMI) += rk_hdmi.o ../dw_hdmi.o
+obj-$(CONFIG_DISPLAY_ROCKCHIP_HDMI) += rk_hdmi.o
 endif
