@@ -28,10 +28,77 @@
 
 DECLARE_GLOBAL_DATA_PTR;
 
+enum vop_pol {
+	HSYNC_POSITIVE = 0,
+	VSYNC_POSITIVE = 1,
+	DEN_NEGATIVE   = 2,
+	DCLK_INVERT    = 3
+};
+
 struct rk_vop_priv {
 	struct rk3288_vop *regs;
 	struct rk3288_grf *grf;
 };
+
+enum vop_features {
+	VOP_FEATURE_OUTPUT_10BIT = (1 << 0),
+};
+
+struct rkvop_driverdata {
+	/* configuration */
+	u32 features;
+	/* block-specific setters/getters */
+	void (*set_pin_polarity)(struct udevice *, enum vop_modes, u32);
+};
+
+static void rk3288_set_pin_polarity(struct udevice *dev,
+				    enum vop_modes mode, u32 polarity)
+{
+	struct rk_vop_priv *priv = dev_get_priv(dev);
+	struct rk3288_vop *regs = priv->regs;
+
+	/* The RK3328 VOP (v3.1) has its polarity configuration in ctrl0 */
+	clrsetbits_le32(&regs->dsp_ctrl0,
+			M_DSP_DCLK_POL | M_DSP_DEN_POL |
+			M_DSP_VSYNC_POL | M_DSP_HSYNC_POL,
+			V_DSP_PIN_POL(polarity));
+}
+
+static void rk3399_set_pin_polarity(struct udevice *dev,
+				    enum vop_modes mode, u32 polarity)
+{
+	struct rk_vop_priv *priv = dev_get_priv(dev);
+	struct rk3288_vop *regs = priv->regs;
+
+	/*
+	 * The RK3399 VOPs (v3.5 and v3.6) require a per-mode setting of
+	 * the polarity configuration (in ctrl1).
+	 */
+	switch (mode) {
+	case VOP_MODE_HDMI:
+		clrsetbits_le32(&regs->dsp_ctrl1,
+				M_RK3399_DSP_HDMI_POL,
+				V_RK3399_DSP_HDMI_POL(polarity));
+		break;
+
+	case VOP_MODE_EDP:
+		clrsetbits_le32(&regs->dsp_ctrl1,
+				M_RK3399_DSP_EDP_POL,
+				V_RK3399_DSP_EDP_POL(polarity));
+		break;
+
+	case VOP_MODE_MIPI:
+		clrsetbits_le32(&regs->dsp_ctrl1,
+				M_RK3399_DSP_MIPI_POL,
+				V_RK3399_DSP_MIPI_POL(polarity));
+		break;
+
+	case VOP_MODE_LVDS:
+		/* The RK3399 has neither parallel RGB nor LVDS output. */
+	default:
+		debug("%s: unsupported output mode %x\n", __func__, mode);
+	}
+}
 
 void rkvop_enable(struct rk3288_vop *regs, ulong fbbase,
 		  int fb_bits_per_pixel, const struct display_timing *edid)
@@ -89,9 +156,55 @@ void rkvop_enable(struct rk3288_vop *regs, ulong fbbase,
 	writel(0x01, &regs->reg_cfg_done); /* enable reg config */
 }
 
-void rkvop_mode_set(struct rk3288_vop *regs,
+static void rkvop_set_pin_polarity(struct udevice *dev,
+				   enum vop_modes mode, u32 polarity)
+{
+	struct rkvop_driverdata *ops =
+		(struct rkvop_driverdata *)dev_get_driver_data(dev);
+
+	if (ops->set_pin_polarity)
+		ops->set_pin_polarity(dev, mode, polarity);
+}
+
+static void rkvop_enable_output(struct udevice *dev, enum vop_modes mode)
+{
+	struct rk_vop_priv *priv = dev_get_priv(dev);
+	struct rk3288_vop *regs = priv->regs;
+
+	switch (mode) {
+	case VOP_MODE_HDMI:
+		clrsetbits_le32(&regs->sys_ctrl, M_ALL_OUT_EN,
+				V_HDMI_OUT_EN(1));
+		break;
+
+	case VOP_MODE_EDP:
+		clrsetbits_le32(&regs->sys_ctrl, M_ALL_OUT_EN,
+				V_EDP_OUT_EN(1));
+		break;
+
+	case VOP_MODE_LVDS:
+		clrsetbits_le32(&regs->sys_ctrl, M_ALL_OUT_EN,
+				V_RGB_OUT_EN(1));
+		break;
+
+	case VOP_MODE_MIPI:
+		clrsetbits_le32(&regs->sys_ctrl, M_ALL_OUT_EN,
+				V_MIPI_OUT_EN(1));
+		break;
+
+	default:
+		debug("%s: unsupported output mode %x\n", __func__, mode);
+	}
+}
+
+void rkvop_mode_set(struct udevice *dev,
 		    const struct display_timing *edid, enum vop_modes mode)
 {
+	struct rk_vop_priv *priv = dev_get_priv(dev);
+	struct rk3288_vop *regs = priv->regs;
+	struct rkvop_driverdata *data =
+		(struct rkvop_driverdata *)dev_get_driver_data(dev);
+
 	u32 hactive = edid->hactive.typ;
 	u32 vactive = edid->vactive.typ;
 	u32 hsync_len = edid->hsync_len.typ;
@@ -100,43 +213,25 @@ void rkvop_mode_set(struct rk3288_vop *regs,
 	u32 vback_porch = edid->vback_porch.typ;
 	u32 hfront_porch = edid->hfront_porch.typ;
 	u32 vfront_porch = edid->vfront_porch.typ;
-	uint flags;
 	int mode_flags;
+	u32 pin_polarity;
 
-	switch (mode) {
-	case VOP_MODE_HDMI:
-		clrsetbits_le32(&regs->sys_ctrl, M_ALL_OUT_EN,
-				V_HDMI_OUT_EN(1));
-		break;
-	case VOP_MODE_EDP:
-	default:
-		clrsetbits_le32(&regs->sys_ctrl, M_ALL_OUT_EN,
-				V_EDP_OUT_EN(1));
-		break;
-	case VOP_MODE_LVDS:
-		clrsetbits_le32(&regs->sys_ctrl, M_ALL_OUT_EN,
-				V_RGB_OUT_EN(1));
-		break;
-	case VOP_MODE_MIPI:
-		clrsetbits_le32(&regs->sys_ctrl, M_ALL_OUT_EN,
-				V_MIPI_OUT_EN(1));
-		 break;
-	}
+	pin_polarity = BIT(DCLK_INVERT);
+	if (edid->flags & DISPLAY_FLAGS_HSYNC_HIGH)
+		pin_polarity |= BIT(HSYNC_POSITIVE);
+	if (edid->flags & DISPLAY_FLAGS_VSYNC_HIGH)
+		pin_polarity |= BIT(VSYNC_POSITIVE);
 
-	if (mode == VOP_MODE_HDMI || mode == VOP_MODE_EDP)
-		/* RGBaaa */
-		mode_flags = 15;
-	else
-		/* RGB888 */
-		mode_flags = 0;
+	rkvop_set_pin_polarity(dev, mode, pin_polarity);
+	rkvop_enable_output(dev, mode);
 
-	flags = V_DSP_OUT_MODE(mode_flags) |
-		V_DSP_HSYNC_POL(!!(edid->flags & DISPLAY_FLAGS_HSYNC_HIGH)) |
-		V_DSP_VSYNC_POL(!!(edid->flags & DISPLAY_FLAGS_VSYNC_HIGH));
+	mode_flags = 0;  /* RGB888 */
+	if ((data->features & VOP_FEATURE_OUTPUT_10BIT) &&
+	    (mode == VOP_MODE_HDMI || mode == VOP_MODE_EDP))
+		mode_flags = 15;  /* RGBaaa */
 
-	clrsetbits_le32(&regs->dsp_ctrl0,
-			M_DSP_OUT_MODE | M_DSP_VSYNC_POL | M_DSP_HSYNC_POL,
-			flags);
+	clrsetbits_le32(&regs->dsp_ctrl0, M_DSP_OUT_MODE,
+			V_DSP_OUT_MODE(mode_flags));
 
 	writel(V_HSYNC(hsync_len) |
 	       V_HORPRD(hsync_len + hback_porch + hactive + hfront_porch),
@@ -257,18 +352,18 @@ int rk_display_init(struct udevice *dev, ulong fbbase, int ep_node)
 	/* Set bitwidth for vop display according to vop mode */
 	switch (vop_id) {
 	case VOP_MODE_EDP:
-	case VOP_MODE_HDMI:
 	case VOP_MODE_LVDS:
 		l2bpp = VIDEO_BPP16;
 		break;
+	case VOP_MODE_HDMI:
 	case VOP_MODE_MIPI:
 		l2bpp = VIDEO_BPP32;
 		break;
 	default:
 		l2bpp = VIDEO_BPP16;
 	}
-	rkvop_mode_set(regs, &timing, vop_id);
 
+	rkvop_mode_set(dev, &timing, vop_id);
 	rkvop_enable(regs, fbbase, 1 << l2bpp, &timing);
 
 	ret = display_enable(disp, 1 << l2bpp, &timing);
@@ -359,19 +454,42 @@ static int rk_vop_bind(struct udevice *dev)
 {
 	struct video_uc_platdata *plat = dev_get_uclass_platdata(dev);
 
-	plat->size = 1920 * 1200 * 4;
+	/*
+	 * Let's allocate an excessively large framebuffer (i.e. the
+	 * maximum any of the supported VOP variants can output), so
+	 * we are prepared for the day when someone first tries to
+	 * drive a 4K2K HDMI signal from the bootloader.
+	 */
+	plat->size = 4096 * 2160 * 4;
 
 	return 0;
 }
 
-static const struct video_ops rk_vop_ops = {
+struct rkvop_driverdata rk3288_driverdata = {
+	.features = VOP_FEATURE_OUTPUT_10BIT,
+	.set_pin_polarity = rk3288_set_pin_polarity,
+};
+
+struct rkvop_driverdata rk3399_lit_driverdata = {
+	.set_pin_polarity = rk3399_set_pin_polarity,
+};
+
+struct rkvop_driverdata rk3399_big_driverdata = {
+	.features = VOP_FEATURE_OUTPUT_10BIT,
+	.set_pin_polarity = rk3399_set_pin_polarity,
 };
 
 static const struct udevice_id rk_vop_ids[] = {
-	{ .compatible = "rockchip,rk3399-vop-big" },
-	{ .compatible = "rockchip,rk3399-vop-lit" },
-	{ .compatible = "rockchip,rk3288-vop" },
+	{ .compatible = "rockchip,rk3288-vop",
+	  .data = (ulong)&rk3288_driverdata },
+	{ .compatible = "rockchip,rk3399-vop-big",
+	  .data = (ulong)&rk3399_big_driverdata },
+	{ .compatible = "rockchip,rk3399-vop-lit",
+	  .data = (ulong)&rk3399_lit_driverdata },
 	{ }
+};
+
+static const struct video_ops rk_vop_ops = {
 };
 
 U_BOOT_DRIVER(rk_vop) = {
