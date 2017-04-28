@@ -28,4 +28,9 @@
 
 #define CONFIG_SYS_WHITE_ON_BLACK
 
+#define CONFIG_CMD_BMP
+#define CONFIG_BMP_16BPP
+#define CONFIG_BMP_24BPP
+#define CONFIG_BMP_32BPP
+
 #endif
