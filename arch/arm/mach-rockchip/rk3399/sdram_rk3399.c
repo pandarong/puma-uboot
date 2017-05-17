@@ -230,12 +230,12 @@ static void set_ds_odt(const struct chan_info *chan,
 		tsel_idle_select_n = PHY_DRV_ODT_Hi_Z;
 	} else {
 		tsel_rd_select_p = PHY_DRV_ODT_240;
-		tsel_wr_select_p = PHY_DRV_ODT_48;
+		tsel_wr_select_p = PHY_DRV_ODT_34_3;
 		ca_tsel_wr_select_p = PHY_DRV_ODT_48;
 		tsel_idle_select_p = PHY_DRV_ODT_240;
 
 		tsel_rd_select_n = PHY_DRV_ODT_240;
-		tsel_wr_select_n = PHY_DRV_ODT_48;
+		tsel_wr_select_n = PHY_DRV_ODT_34_3;
 		ca_tsel_wr_select_n = PHY_DRV_ODT_48;
 		tsel_idle_select_n = PHY_DRV_ODT_240;
 	}
