@@ -5,6 +5,7 @@ config ROCKCHIP_RK3036
 	select CPU_V7
 	select SUPPORT_SPL
 	select SPL
+	select ENABLE_ARM_SOC_BOOT0_HOOK
 	help
 	  The Rockchip RK3036 is a ARM-based SoC with a dual-core Cortex-A7
 	  including NEON and GPU, Mali-400 graphics, several DDR3 options
@@ -21,6 +22,7 @@ config ROCKCHIP_RK3188
 	select TPL
 	select BOARD_LATE_INIT
 	select ROCKCHIP_BROM_HELPER
+	select ENABLE_ARM_SOC_BOOT0_HOOK
 	help
 	  The Rockchip RK3188 is a ARM-based SoC with a quad-core Cortex-A9
 	  including NEON and GPU, 512KB L2 cache, Mali-400 graphics, two
@@ -47,6 +49,7 @@ config ROCKCHIP_RK3288
 	select SPL_BOARD_INIT if SPL
 	select SUPPORT_SPL
 	select SPL
+	select ENABLE_ARM_SOC_BOOT0_HOOK
 	help
 	  The Rockchip RK3288 is a ARM-based SoC with a quad-core Cortex-A17
 	  including NEON and GPU, 1MB L2 cache, Mali-T7 graphics, two
