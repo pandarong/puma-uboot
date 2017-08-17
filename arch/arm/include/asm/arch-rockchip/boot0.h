@@ -20,12 +20,28 @@
 	 * beginning of the executable.	 However, as we want to keep
 	 * this generic and make it applicable to builds that are like
 	 * the RK3368 (TPL needs this, SPL doesn't) or the RK3399 (no
-	 * TPL, but extra space needed in the SPL), we simply repeat
-	 * the 'b reset' with the expectation that the first one will
-	 * be overwritten, if this is the first stage contained in the
-	 * final image created with mkimage)...
+	 * TPL, but extra space needed in the SPL), we simply insert
+	 * a branch-to-next-instruction-word with the expectation that
+	 * the first one may be overwritten, if this is the first stage
+	 * contained in the final image created with mkimage)...
 	 */
-	b reset	 /* may be overwritten --- should be 'nop' or a 'b reset' */
+	b 1f	 /* if overwritten, entry-address is at the next word */
+1:
+#endif
+#if defined(CONFIG_TPL_BUILD) && \
+      (defined(CONFIG_ROCKCHIP_RK3066) || defined(CONFIG_ROCKCHIP_RK3188))
+	adr     r3, entry_counter
+	ldr	r0, [r3]
+	cmp	r0, #1
+	movne	r0, #1
+	strne	r0, [r3]
+	beq	out_of_bootrom
+	bx	lr
+entry_counter:
+	.word   0
+out_of_bootrom:
+	mov	r0, #0
+	str	r0, [r3]
 #endif
 	b reset
 #if !defined(CONFIG_ARM64)
