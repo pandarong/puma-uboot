@@ -75,7 +75,7 @@ void board_init_f(ulong dummy)
 		 * really early on.
 		 */
 
-		back_to_bootrom();
+		back_to_bootrom(BROM_BOOT_NEXTSTAGE);
 	} else {
 		/*
 		 * SPL part of the loader should now wait for us at
@@ -84,6 +84,6 @@ void board_init_f(ulong dummy)
 		 * through).
 		 */
 		jump_to_spl();
-		back_to_bootrom();
+		back_to_bootrom(BROM_BOOT_NEXTSTAGE);
 	}
 }
