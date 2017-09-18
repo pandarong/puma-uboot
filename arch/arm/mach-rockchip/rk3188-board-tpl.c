@@ -21,15 +21,16 @@ static int rk3188_num_entries __attribute__ ((section(".data")));
 
 static void jump_to_spl(void)
 {
-	typedef void __noreturn (*image_entry_noargs_t)(void);
+	typedef void (*image_entry_noargs_t)(void);
 
-	struct rk3188_pmu * const pmu = (void *)PMU_BASE;
 	image_entry_noargs_t tpl_entry =
 		(image_entry_noargs_t)(unsigned long)SPL_ENTRY;
 
-	/* Store the SAVE_SP_ADDR in a location shared with SPL. */
-	writel(SAVE_SP_ADDR, &pmu->sys_reg[2]);
 	tpl_entry();
+	/*
+	 * If the SPL stage triggers a 'return to bootrom', it will
+	 * return to here.
+	 */
 }
 
 void board_init_f(ulong dummy)
@@ -77,10 +78,12 @@ void board_init_f(ulong dummy)
 		back_to_bootrom();
 	} else {
 		/*
-		 * TPL part of the loader should now wait for us
-		 * at offset 0xC00 in the sram. Should never return
-		 * from there.
+		 * SPL part of the loader should now wait for us at
+		 * offset 0xC00 in the sram. If the SPL returns to us,
+		 * we should in turn return to the BROM (i.e. chain
+		 * through).
 		 */
 		jump_to_spl();
+		back_to_bootrom();
 	}
 }
