@@ -164,6 +164,7 @@ int usb_get_max_xfer_size(struct usb_device *udev, size_t *size)
 int usb_stop(void)
 {
 	struct udevice *bus;
+	struct udevice *rh;
 	struct uclass *uc;
 	struct usb_uclass_priv *uc_priv;
 	int err = 0, ret;
@@ -179,6 +180,18 @@ int usb_stop(void)
 		ret = device_remove(bus, DM_REMOVE_NORMAL);
 		if (ret && !err)
 			err = ret;
+
+		/* Locate root hub device */
+		device_find_first_child(bus, &rh);
+		if (rh) {
+			/*
+			 * All USB devices are children of root hub.
+			 * Unbinding root hub will unbind all of its children.
+			 */
+			ret = device_unbind(rh);
+			if (ret && !err)
+				err = ret;
+		}
 	}
 #ifdef CONFIG_BLK
 	ret = blk_unbind_all(IF_TYPE_USB);
