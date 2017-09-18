@@ -19,7 +19,6 @@ config ROCKCHIP_RK3188
 	select SUPPORT_SPL
 	select SUPPORT_TPL
 	select SPL
-	select TPL
 	select BOARD_LATE_INIT
 	select ROCKCHIP_BROM_HELPER
 	select ENABLE_ARM_SOC_BOOT0_HOOK
