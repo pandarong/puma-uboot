@@ -440,11 +440,6 @@ void board_init_r(gd_t *dummy1, ulong dummy2)
 		debug("Failed to stash bootstage: err=%d\n", ret);
 #endif
 
-	if (CONFIG_IS_ENABLED(ATF_SUPPORT)) {
-		debug("loaded - jumping to U-Boot via ATF BL31.\n");
-		bl31_entry();
-	}
-
 	debug("loaded - jumping to U-Boot...\n");
 	spl_board_prepare_for_boot();
 	jump_to_image_no_args(&spl_image);
