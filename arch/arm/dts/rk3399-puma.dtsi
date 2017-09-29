@@ -97,8 +97,8 @@
 		regulator-name = "usbhub_enable";
 		enable-active-low;
 		gpio = <&gpio4 3 GPIO_ACTIVE_HIGH>;
-		regulator-always-on;
-		regulator-boot-on;
+/*		regulator-always-on; */
+/*		regulator-boot-on; */
 		regulator-min-microvolt = <3300000>;
 		regulator-max-microvolt = <3300000>;
 	};
@@ -534,7 +534,7 @@
 };
 
 &dwc3_typec0 {
-	status = "okay";
+	status = "disabled";
 };
 
 &usb_host1_ehci {
