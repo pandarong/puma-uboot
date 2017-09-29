@@ -29,6 +29,16 @@ int board_init(void)
 	if (ret)
 		debug("%s: Cannot enable boot on regulator\n", __func__);
 
+	{
+	  struct udevice *regulator;
+	  int ret = regulator_get_by_platname("usbhub_enable", &regulator);
+	  if (ret) {
+	    printf("%s: could not get 'usbhub_enable' regulator\n", __func__);
+	  } else {
+	    regulator_set_enable(regulator, true);
+	  }
+	}
+
 	return 0;
 }
 
