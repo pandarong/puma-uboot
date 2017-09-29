@@ -30,6 +30,7 @@
 #include <asm/unaligned.h>
 #include <linux/errno.h>
 #include "xhci.h"
+#include <power/regulator.h>
 
 #ifndef CONFIG_USB_MAX_CONTROLLER_COUNT
 #define CONFIG_USB_MAX_CONTROLLER_COUNT 1
@@ -48,7 +49,7 @@ static struct descriptor {
 		0x2a,		/* bDescriptorType: hub descriptor */
 		2,		/* bNrPorts -- runtime modified */
 		cpu_to_le16(0x8), /* wHubCharacteristics */
-		10,		/* bPwrOn2PwrGood */
+		20,		/* bPwrOn2PwrGood */
 		0,		/* bHubCntrCurrent */
 		{		/* Device removable */
 		}		/* at most 7 ports! XXX */
@@ -1036,6 +1037,18 @@ static int xhci_submit_root(struct usb_device *udev, unsigned long pipe,
 			xhci_writel(status_reg, reg);
 			break;
 		case USB_PORT_FEAT_POWER:
+		  //		  if (le16_to_cpu(req->index) == 1)
+		  {
+		    struct udevice *regulator;
+		    int ret = regulator_get_by_platname("usbhub_enable", &regulator);
+		    if (ret) {
+		      printf("*** could not get 'usbhub_enable' regulator\n");
+		    } else {
+		      //		      regulator_set_enable(regulator, false);
+		      //		      udelay(100);
+		      regulator_set_enable(regulator, false);
+		    }
+		  }
 			reg |= PORT_POWER;
 			xhci_writel(status_reg, reg);
 			break;
