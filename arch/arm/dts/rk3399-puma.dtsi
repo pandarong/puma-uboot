@@ -534,7 +534,7 @@
 };
 
 &dwc3_typec0 {
-	status = "disabled";
+	status = "okay";
 };
 
 &usb_host1_ehci {
