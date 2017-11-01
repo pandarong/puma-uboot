@@ -1037,8 +1037,10 @@ static int xhci_submit_root(struct usb_device *udev, unsigned long pipe,
 			xhci_writel(status_reg, reg);
 			break;
 		case USB_PORT_FEAT_POWER:
-		  //		  if (le16_to_cpu(req->index) == 1)
+		  if ((strcmp(ctrl->dev->name, "usb@fe900000") == 0) &&
+		      le16_to_cpu(req->index) == 1)
 		  {
+		    printf("%s: dev='%s': USB workaround\n", __func__, ctrl->dev->name);
 		    struct udevice *regulator;
 		    int ret = regulator_get_by_platname("usbhub_enable", &regulator);
 		    if (ret) {
