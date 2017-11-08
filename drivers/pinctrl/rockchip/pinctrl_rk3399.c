@@ -250,9 +250,9 @@ static void pinctrl_rk3399_uart_config(struct rk3399_grf_regs *grf,
 static void pinctrl_rk3399_sdmmc_config(struct rk3399_grf_regs *grf, int mmc_id)
 {
 	switch (mmc_id) {
-	case PERIPH_ID_EMMC:
+	case PERIPH_ID_EMMC:     /* "EMMC" in "2.1 Address Mapping" */
 		break;
-	case PERIPH_ID_SDCARD:
+	case PERIPH_ID_SDCARD:   /* "SDMMC" in "2.1 Address Mapping" */
 		rk_clrsetreg(&grf->gpio4b_iomux,
 			     GRF_GPIO4B0_SEL_MASK | GRF_GPIO4B1_SEL_MASK
 			     | GRF_GPIO4B2_SEL_MASK | GRF_GPIO4B3_SEL_MASK
@@ -441,7 +441,9 @@ static int rk3399_pinctrl_get_periph_id(struct udevice *dev,
 	case 58:
 		return PERIPH_ID_I2C8;
 	case 65:
-		return PERIPH_ID_SDMMC1;
+		return PERIPH_ID_SDCARD;
+	case 11:
+		return PERIPH_ID_EMMC;
 #if CONFIG_IS_ENABLED(GMAC_ROCKCHIP)
 	case 12:
 		return PERIPH_ID_GMAC;
