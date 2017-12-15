@@ -9,10 +9,15 @@
 #include <misc.h>
 #include <dm/pinctrl.h>
 #include <dm/uclass-internal.h>
+#include <asm/io.h>
 #include <asm/setup.h>
+#include <asm/arch/clock.h>
+#include <asm/arch/hardware.h>
+#include <asm/arch/grf_rk3399.h>
 #include <asm/arch/periph.h>
 #include <power/regulator.h>
 #include <spl.h>
+#include <syscon.h>
 #include <u-boot/sha256.h>
 
 DECLARE_GLOBAL_DATA_PTR;
@@ -145,10 +150,25 @@ static void setup_serial(void)
 #endif
 }
 
+static void setup_iodomain(void)
+{
+	const u32 GRF_IO_VSEL_GPIO4CD_SHIFT = 3;
+	struct rk3399_grf_regs *grf =
+	    syscon_get_first_range(ROCKCHIP_SYSCON_GRF);
+
+	/*
+	 * Set bit 3 in GRF_IO_VSEL so PCIE_RST# works (pin GPIO4_C6).
+	 * Linux assumes that PCIE_RST# works out of the box as it probes
+	 * PCIe before loading the iodomain driver.
+	 */
+	rk_setreg(&grf->io_vsel, 1 << GRF_IO_VSEL_GPIO4CD_SHIFT);
+}
+
 int misc_init_r(void)
 {
 	setup_serial();
 	setup_macaddr();
+	setup_iodomain();
 
 	return 0;
 }
