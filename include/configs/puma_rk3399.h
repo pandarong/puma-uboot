@@ -37,4 +37,18 @@
 #define CONFIG_BMP_24BPP
 #define CONFIG_BMP_32BPP
 
+/*
+ * We usually boot from SPI flash: This sets CONFIG_ENV_IS_IN_SPI_FLASH=y
+ * and tries to load the kernel from eMMC (mmc0) first.
+ *
+ * If we boot from SD card, we prefer to load the kernel from SD card (mmc1)
+ * first.
+ */
+#if !CONFIG_IS_ENABLED(ENV_IS_IN_SPI_FLASH)
+#undef BOOT_TARGET_DEVICES
+#define BOOT_TARGET_DEVICES(func) \
+	func(MMC, mmc, 1) \
+	func(MMC, mmc, 0)
 #endif
+
+#endif /* __PUMA_RK3399_H */
