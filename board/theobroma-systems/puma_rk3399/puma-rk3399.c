@@ -23,9 +23,33 @@
 #include <power/regulator.h>
 #include <u-boot/sha256.h>
 
+static int setup_pinctrl(void)
+{
+	int ret;
+	struct udevice *pinctrl;
+
+	ret = uclass_get_device(UCLASS_PINCTRL, 0, &pinctrl);
+	if (ret) {
+		debug("%s: Cannot find pinctrl device\n", __func__);
+		goto out;
+	}
+
+	/* Enable pwm2 for vdd_log regulator. */
+	ret = pinctrl_request_noflags(pinctrl, PERIPH_ID_PWM2);
+	if (ret) {
+		printf("%s PWM2 pinctrl init fail!\n", __func__);
+		goto out;
+	}
+
+out:
+	return 0;
+}
+
 int board_init(void)
 {
 	int ret;
+
+	setup_pinctrl();
 
 	/*
 	 * We need to call into regulators_enable_boot_on() again, as the call
@@ -35,6 +59,25 @@ int board_init(void)
 	if (ret)
 		debug("%s: Cannot enable boot on regulator\n", __func__);
 
+	/*
+	 * vdd_log is ignored by regulators_enable_boot_on(), because
+	 * regulator-min-microvolt != regulator-max-microvolt.
+	 * Therefore we explicitly enable it here.
+	 */
+	struct udevice *regulator;
+	ret = regulator_get_by_platname("vdd_log", &regulator);
+	if (ret) {
+		debug("%s Looking up regulator vdd-log failed!\n", __func__);
+		goto out;
+	}
+
+	ret = regulator_set_enable(regulator, true);
+	if (ret) {
+		debug("%s Enabling vdd-log failed!\n", __func__);
+		goto out;
+	}
+
+out:
 	return 0;
 }
 
