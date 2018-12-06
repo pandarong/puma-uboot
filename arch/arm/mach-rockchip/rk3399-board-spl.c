@@ -178,7 +178,7 @@ void board_init_f(ulong dummy)
 	ret = spl_early_init();
 	if (ret) {
 		debug("spl_early_init() failed: %d\n", ret);
-		hang();
+		do_reset(NULL, 0, 0, NULL);
 	}
 
 	/*
@@ -203,13 +203,13 @@ void board_init_f(ulong dummy)
 	ret = uclass_get_device(UCLASS_PINCTRL, 0, &pinctrl);
 	if (ret) {
 		debug("Pinctrl init failed: %d\n", ret);
-		return;
+		do_reset(NULL, 0, 0, NULL);
 	}
 
 	ret = uclass_get_device(UCLASS_RAM, 0, &dev);
 	if (ret) {
 		debug("DRAM init failed: %d\n", ret);
-		return;
+		do_reset(NULL, 0, 0, NULL);
 	}
 }
 
